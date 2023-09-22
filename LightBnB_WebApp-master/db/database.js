@@ -106,7 +106,7 @@ const getAllProperties = function (options, limit = 10) {
     JOIN property_reviews ON properties.id = property_id
   `;
 
-  const whereConditions = []; // Store WHERE conditions here
+  const whereConditions = [];
 
   if (options.city) {
     queryParams.push(`%${options.city}%`);
@@ -119,12 +119,12 @@ const getAllProperties = function (options, limit = 10) {
   }
 
   if (options.minimum_price_per_night !== undefined) {
-    queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
+    queryParams.push(options.minimum_price_per_night * 100);
     whereConditions.push(`cost_per_night >= $${queryParams.length}`);
   }
 
   if (options.maximum_price_per_night !== undefined) {
-    queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
+    queryParams.push(options.maximum_price_per_night * 100);
     whereConditions.push(`cost_per_night <= $${queryParams.length}`);
   }
 
