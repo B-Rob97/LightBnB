@@ -98,17 +98,65 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
-const getAllProperties = (options, limit = 10) => {
-  return pool
-    .query(`SELECT * FROM properties LIMIT $1`, [limit])
-    .then((result) => {
-      // console.log("Result.rows:", result.rows);
-      return result.rows;
-    })
-    .catch((err) => {
-      console.log(err.message);
-    });
+const getAllProperties = function (options, limit = 10) {
+  const queryParams = [];
+  let queryString = `
+    SELECT properties.*, AVG(property_reviews.rating) AS average_rating
+    FROM properties
+    JOIN property_reviews ON properties.id = property_id
+  `;
+
+  const whereConditions = []; // Store WHERE conditions here
+
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    whereConditions.push(`city LIKE $${queryParams.length}`);
+  }
+
+  if (options.owner_id) {
+    queryParams.push(options.owner_id);
+    whereConditions.push(`owner_id = $${queryParams.length}`);
+  }
+
+  if (options.minimum_price_per_night !== undefined) {
+    queryParams.push(options.minimum_price_per_night * 100); // Convert to cents
+    whereConditions.push(`cost_per_night >= $${queryParams.length}`);
+  }
+
+  if (options.maximum_price_per_night !== undefined) {
+    queryParams.push(options.maximum_price_per_night * 100); // Convert to cents
+    whereConditions.push(`cost_per_night <= $${queryParams.length}`);
+  }
+
+  if (options.minimum_rating !== undefined) {
+    queryParams.push(options.minimum_rating);
+  }
+
+  if (whereConditions.length > 0) {
+    queryString += 'WHERE ' + whereConditions.join(' AND ') + ' ';
+  }
+
+  queryString += `
+    GROUP BY properties.id
+  `;
+
+  if (options.minimum_rating !== undefined) {
+    queryString += ` HAVING AVG(property_reviews.rating) >= $${queryParams.length}`;
+  }
+
+  queryParams.push(limit);
+  queryString += `
+    ORDER BY cost_per_night
+    LIMIT $${queryParams.length};
+  `;
+
+  console.log("Query String:", queryString, "Query Params:", queryParams);
+
+  return pool.query(queryString, queryParams).then((res) => res.rows);
 };
+
+
+
 
 /**
  * Add a property to the database
